@@ -185,15 +185,13 @@ CREATE TABLE LOSSES_PER_USER (
     `GAME_NAME` STRING,
     `TOTAL_LOSSES` INT,
     PRIMARY KEY (`USER`, `GAME_NAME`) NOT ENFORCED
-) WITH (
-    'kafka.partitions' = '1'
-);
+) DISTRIBUTED INTO 1 BUCKETS;
 
 INSERT INTO LOSSES_PER_USER
-SELECT 
+SELECT
     `user`,
     game_name,
-    cast(count(game_name) as int) as total_losses 
+    cast(count(game_name) as int) as total_losses
 FROM USER_LOSSES GROUP BY `user`,game_name;
 ----
 
@@ -209,10 +207,8 @@ CREATE TABLE STATS_PER_USER (
     `HIGHEST_LEVEL` INT,
     `TOTAL_LOSSES` INT,
     PRIMARY KEY (`USER`, `GAME_NAME`) NOT ENFORCED
-) WITH (
-    'kafka.partitions' = '1',
-    'kafka.cleanup-policy' = 'delete-compact' 
-);
+)  DISTRIBUTED INTO 1 BUCKETS
+  WITH( 'kafka.cleanup-policy' = 'delete-compact');
 
 INSERT INTO STATS_PER_USER
 SELECT
@@ -221,7 +217,7 @@ SELECT
     MAX(UG.score) AS HIGHEST_SCORE,
     MAX(UG.level) AS HIGHEST_LEVEL,
     MAX (
-        CASE 
+        CASE
             WHEN LPU.TOTAL_LOSSES IS NULL THEN CAST (0 AS INT)
             ELSE LPU.TOTAL_LOSSES
         END
@@ -229,7 +225,7 @@ SELECT
 FROM
     USER_GAME UG
     LEFT JOIN LOSSES_PER_USER LPU ON UG.`user` = LPU.`USER` AND UG.game_name = LPU.GAME_NAME
-GROUP BY 
+GROUP BY
     UG.`user`, UG.game_name;
 ----
 
